@@ -1,3 +1,26 @@
+---
+name: stock-report
+description: A股研报MCP Server - 基于FastMCP与AkShare的股票研报MCP服务
+version: 0.1.0
+entry: python mcp_server.py --transport stdio
+transport: stdio
+tools:
+  - get_stock_basic
+  - get_stock_research_report
+  - get_stock_news
+  - get_financial_indicator
+env:
+  MCP_TRANSPORT: stdio
+  MCP_HOST: "0.0.0.0"
+  MCP_PORT: "8000"
+  MCP_LOG_LEVEL: INFO
+requires: "python>=3.11"
+dependencies:
+  - akshare
+  - fastmcp
+  - python-dotenv
+---
+
 # stock-report
 
 基于 [FastMCP](https://github.com/fastmcp/fastmcp) 与 [AkShare](https://github.com/akfamily/akshare) 构建的 A 股研报 MCP Server，支持 `stdio`、`http`、`sse` 三种传输协议，可发布到 ModelScope 平台供任意支持 MCP 的客户端（Claude Desktop、Cursor、Trae 等）调用，实现对个股基础信息、券商研报、新闻及财务指标的一键查询。
@@ -30,10 +53,7 @@ stock-report/
 │   ├── __init__.py             # 包标识
 │   └── mcpserver/
 │       ├── __init__.py         # 包导出（mcp 实例）
-│       ├── __main__.py         # python -m 入口
-│       ├── cli.py              # CLI 命令行入口
 │       ├── config.py           # 集中配置管理
-│       ├── logging_setup.py    # 日志配置（stderr 输出）
 │       └── server.py          # MCP 实例 + 工具注册
 ├── pyproject.toml              # 项目元数据与依赖声明
 ├── .env                        # 运行时环境变量
@@ -65,19 +85,14 @@ pip install akshare fastmcp python-dotenv
 在项目根目录创建 `.env` 文件（本地开发用）：
 
 ```bash
-# 传输协议 (默认 stdio，ModelScope 平台验证用 stdio)
 MCP_TRANSPORT=stdio
 MCP_HOST=0.0.0.0
 MCP_PORT=8000
 MCP_LOG_LEVEL=INFO
-
-# AkShare 请求超时
 REQUEST_TIMEOUT=12
 ```
 
 ### 4. 启动 MCP Server
-
-#### 方式一：根目录入口（ModelScope 平台兼容）
 
 ```bash
 # 默认 stdio 模式
@@ -88,25 +103,6 @@ python mcp_server.py --transport http --port 8000
 
 # SSE 模式
 python mcp_server.py --transport sse --port 8000
-```
-
-#### 方式二：命令行入口
-
-```bash
-# stdio（默认）
-stock-mcp
-
-# HTTP
-stock-mcp --transport http --port 8000
-
-# SSE
-mcp-server --transport sse
-```
-
-#### 方式三：python -m
-
-```bash
-python -m app.mcpserver --transport stdio
 ```
 
 ### 5. 本地客户端接入
@@ -154,6 +150,7 @@ python -m app.mcpserver --transport stdio
 1. 将代码推送到 GitHub 仓库
 2. 确保 `mcp_server.py` 位于仓库根目录
 3. `pyproject.toml` 中声明了所有依赖
+4. README.md 顶部包含 YAML 元数据（本文件已配置）
 
 ### 发布步骤
 
@@ -166,6 +163,7 @@ python -m app.mcpserver --transport stdio
    - 中文名称：展示名称
    - 来源地址：你的 GitHub 仓库链接
 4. 提交后，平台会自动：
+   - 解析 README.md 中的 YAML 元数据
    - 克隆仓库代码
    - 执行 `pip install .` 安装依赖
    - 运行 `python mcp_server.py --transport stdio` 校验服务可用性
@@ -173,15 +171,16 @@ python -m app.mcpserver --transport stdio
 
 ### 校验失败排查清单
 
-如果遇到 **"校验服务配置可用性"** 失败，按以下顺序排查：
+如果遇到 **"基础信息解析失败"** 或 **"校验服务配置可用性"** 失败，按以下顺序排查：
 
 | # | 检查项 | 说明 |
 |---|--------|------|
-| 1 | **根目录是否有 `mcp_server.py`** | ModelScope 默认查找根目录的 `mcp_server.py`，缺少会直接失败 |
-| 2 | **默认传输协议是否为 `stdio`** | 平台用 stdio 验证，确保 `MCP_TRANSPORT` 环境变量为 `stdio` |
-| 3 | **依赖能否快速安装** | AkShare 依赖较重，首次安装可能超时。本地先 `pip install -e .` 验证 |
-| 4 | **Python 版本** | 平台可能使用 Python 3.11，确保代码兼容 |
-| 5 | **本地测试通过** | 在本地先执行 `python mcp_server.py --transport stdio` 验证服务能正常启动 |
+| 1 | **README.md 顶部 YAML 元数据** | ModelScope 解析 README 开头的 YAML front matter 获取配置信息 |
+| 2 | **根目录是否有 `mcp_server.py`** | ModelScope 默认查找根目录的 `mcp_server.py`，缺少会直接失败 |
+| 3 | **默认传输协议是否为 `stdio`** | 平台用 stdio 验证，确保 `MCP_TRANSPORT` 环境变量为 `stdio` |
+| 4 | **依赖能否快速安装** | AkShare 依赖较重，首次安装可能超时。本地先 `pip install -e .` 验证 |
+| 5 | **Python 版本** | 平台可能使用 Python 3.11，确保代码兼容 |
+| 6 | **本地测试通过** | 在本地先执行 `python mcp_server.py --transport stdio` 验证服务能正常启动 |
 
 ### 本地模拟 ModelScope 验证
 
@@ -246,14 +245,7 @@ def my_new_tool(symbol: str) -> str:
 
 ### 配置说明
 
-在 `app/mcpserver/config.py` 中集中管理配置项，支持通过环境变量覆盖默认值：
-
-```python
-@dataclass
-class Settings:
-    server_name: str = field(default_factory=lambda: os.getenv("MCP_SERVER_NAME", "stock-report-mcp"))
-    # ...
-```
+在 `app/mcpserver/config.py` 中集中管理配置项，支持通过环境变量覆盖默认值。
 
 ### 日志说明
 

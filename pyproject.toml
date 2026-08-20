@@ -1,0 +1,23 @@
+[project]
+name = "stock-report"
+version = "0.1.0"
+description = "A股研报MCP Server - 基于FastMCP与AkShare的股票研报MCP服务"
+requires-python = ">=3.11"
+dependencies = [
+    "akshare>=1.18.92",
+    "fastmcp>=3.4.7",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+stock-mcp = "app.mcpserver.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

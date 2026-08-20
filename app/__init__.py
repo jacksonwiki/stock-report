@@ -1,1 +1,0 @@
-"""Stock Report MCP Server Package"""

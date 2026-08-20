@@ -1,6 +1,6 @@
 # stock-report
 
-基于 [FastMCP](https://github.com/fastmcp/fastmcp) 与 [AkShare](https://github.com/akfamily/akshare) 构建的 A 股研报 MCP Server，支持 `stdio`、`http`、`sse` 三种传输协议，供任意支持 MCP 的客户端（如 Claude Desktop、Cursor、Trae 等）调用，实现对个股基础信息、券商研报、新闻及财务指标的一键查询。
+基于 [FastMCP](https://github.com/fastmcp/fastmcp) 与 [AkShare](https://github.com/akfamily/akshare) 构建的 A 股研报 MCP Server，支持 `stdio`、`http`、`sse` 三种传输协议，可发布到 ModelScope 平台供任意支持 MCP 的客户端（Claude Desktop、Cursor、Trae 等）调用，实现对个股基础信息、券商研报、新闻及财务指标的一键查询。
 
 > ⚠️ 本项目仅用于技术演示，所有数据来源于公开接口，**不构成任何投资建议**。
 
@@ -19,21 +19,25 @@
 - [FastMCP](https://github.com/fastmcp/fastmcp) — 基于 MCP 协议的工具服务器框架
 - [AkShare](https://github.com/akfamily/akshare) — A 股开源金融数据接口库
 - 支持 `stdio` / `http` / `sse` 三种传输协议
+- 兼容 ModelScope MCP 平台发布规范
 
 ## 📁 目录结构
 
 ```
 stock-report/
+├── mcp_server.py               # 根目录入口（ModelScope 平台要求）
 ├── app/
+│   ├── __init__.py             # 包标识
 │   └── mcpserver/
-│       ├── __init__.py        # 包导出（mcp 实例）
-│       ├── __main__.py        # python -m 入口
-│       ├── cli.py             # CLI 命令行入口（argparse）
-│       ├── config.py          # 集中配置管理（环境变量）
-│       ├── logging_setup.py   # 日志配置（stderr 输出）
+│       ├── __init__.py         # 包导出（mcp 实例）
+│       ├── __main__.py         # python -m 入口
+│       ├── cli.py              # CLI 命令行入口
+│       ├── config.py           # 集中配置管理
+│       ├── logging_setup.py    # 日志配置（stderr 输出）
 │       └── server.py          # MCP 实例 + 工具注册
-├── pyproject.toml             # 项目元数据与依赖声明
-├── .env                       # 运行时环境变量
+├── pyproject.toml              # 项目元数据与依赖声明
+├── .env                        # 运行时环境变量
+├── .gitignore
 └── README.md
 ```
 
@@ -58,52 +62,56 @@ pip install akshare fastmcp python-dotenv
 
 ### 3. 配置环境变量
 
-在项目根目录创建 `.env` 文件：
+在项目根目录创建 `.env` 文件（本地开发用）：
 
 ```bash
-# 服务端
-MCP_SERVER_NAME=stock-report-mcp
+# 传输协议 (默认 stdio，ModelScope 平台验证用 stdio)
+MCP_TRANSPORT=stdio
 MCP_HOST=0.0.0.0
 MCP_PORT=8000
 MCP_LOG_LEVEL=INFO
 
-# AkShare
+# AkShare 请求超时
 REQUEST_TIMEOUT=12
 ```
 
 ### 4. 启动 MCP Server
 
-#### 方式一：命令行入口（推荐）
+#### 方式一：根目录入口（ModelScope 平台兼容）
 
 ```bash
-# 默认 Streamable-HTTP
-stock-mcp
+# 默认 stdio 模式
+python mcp_server.py
 
-# 指定传输协议与端口
-stock-mcp --transport http --port 8080
-
-# 子进程模式（推荐用于 MCP 客户端集成）
-stock-mcp --transport stdio
+# HTTP 模式
+python mcp_server.py --transport http --port 8000
 
 # SSE 模式
-stock-mcp --transport sse
+python mcp_server.py --transport sse --port 8000
 ```
 
-#### 方式二：python -m
+#### 方式二：命令行入口
+
+```bash
+# stdio（默认）
+stock-mcp
+
+# HTTP
+stock-mcp --transport http --port 8000
+
+# SSE
+mcp-server --transport sse
+```
+
+#### 方式三：python -m
 
 ```bash
 python -m app.mcpserver --transport stdio
 ```
 
-#### 方式三：直接调用模块
+### 5. 本地客户端接入
 
-```bash
-python -m app.mcpserver.cli --transport http --host 0.0.0.0 --port 8000
-```
-
-### 5. 客户端接入
-
-#### stdio 模式（推荐，生产环境首选）
+#### stdio 模式（推荐）
 
 在 MCP 客户端配置中：
 
@@ -111,14 +119,14 @@ python -m app.mcpserver.cli --transport http --host 0.0.0.0 --port 8000
 {
   "mcpServers": {
     "stock-report": {
-      "command": "stock-mcp",
-      "args": ["--transport", "stdio"]
+      "command": "python",
+      "args": ["mcp_server.py", "--transport", "stdio"]
     }
   }
 }
 ```
 
-#### HTTP 模式（便于跨客户端共享）
+#### HTTP 模式
 
 ```json
 {
@@ -134,10 +142,63 @@ python -m app.mcpserver.cli --transport http --host 0.0.0.0 --port 8000
 
 | 参数 | 可选值 | 默认值 | 说明 |
 |------|--------|--------|------|
-| `--transport` | `stdio` / `http` / `sse` | `http` | 传输协议 |
+| `--transport` | `stdio` / `http` / `sse` | `stdio` | 传输协议 |
 | `--host` | IP 地址 | `0.0.0.0` | HTTP/SSE 监听地址 |
 | `--port` | 端口号 | `8000` | HTTP/SSE 监听端口 |
 | `--log-level` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | `INFO` | 日志级别 |
+
+## 🚀 发布到 ModelScope 平台
+
+### 前置准备
+
+1. 将代码推送到 GitHub 仓库
+2. 确保 `mcp_server.py` 位于仓库根目录
+3. `pyproject.toml` 中声明了所有依赖
+
+### 发布步骤
+
+1. 登录 [ModelScope MCP 平台](https://www.modelscope.cn/mcp)
+2. 点击 **"创建 MCP"** → 选择 **"GitHub 快速创建"**
+3. 填写基础信息：
+   - 创建类型：`GitHub快速创建`
+   - 托管类型：`可托管部署`
+   - 英文名称：唯一标识
+   - 中文名称：展示名称
+   - 来源地址：你的 GitHub 仓库链接
+4. 提交后，平台会自动：
+   - 克隆仓库代码
+   - 执行 `pip install .` 安装依赖
+   - 运行 `python mcp_server.py --transport stdio` 校验服务可用性
+   - 校验通过后完成部署
+
+### 校验失败排查清单
+
+如果遇到 **"校验服务配置可用性"** 失败，按以下顺序排查：
+
+| # | 检查项 | 说明 |
+|---|--------|------|
+| 1 | **根目录是否有 `mcp_server.py`** | ModelScope 默认查找根目录的 `mcp_server.py`，缺少会直接失败 |
+| 2 | **默认传输协议是否为 `stdio`** | 平台用 stdio 验证，确保 `MCP_TRANSPORT` 环境变量为 `stdio` |
+| 3 | **依赖能否快速安装** | AkShare 依赖较重，首次安装可能超时。本地先 `pip install -e .` 验证 |
+| 4 | **Python 版本** | 平台可能使用 Python 3.11，确保代码兼容 |
+| 5 | **本地测试通过** | 在本地先执行 `python mcp_server.py --transport stdio` 验证服务能正常启动 |
+
+### 本地模拟 ModelScope 验证
+
+在提交到平台前，先本地模拟验证：
+
+```bash
+# 1. 安装依赖
+pip install -e .
+
+# 2. 测试 stdio 模式启动
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | python mcp_server.py --transport stdio
+
+# 3. 测试列出工具
+echo '{"jsonrpc":"2.0","method":"tools/list","id":2}' | python mcp_server.py --transport stdio
+```
+
+如果返回了有效的 JSON-RPC 响应，说明服务可以正常工作。
 
 ## 🔧 工具调用示例
 
@@ -172,7 +233,6 @@ get_financial_indicator(symbol="600036")
 在 `app/mcpserver/server.py` 中使用 `@mcp.tool()` 装饰器注册：
 
 ```python
-# server.py
 @mcp.tool()
 def my_new_tool(symbol: str) -> str:
     """工具描述（客户端会作为 schema 展示）"""
@@ -197,13 +257,13 @@ class Settings:
 
 ### 日志说明
 
-为避免污染 MCP 协议的 stdout 通道，业务日志统一通过 `stderr` 输出，使用标准 `logging` 模块，默认 `INFO` 级别。日志配置位于 `app/mcpserver/logging_setup.py`。
+为避免污染 MCP 协议的 stdout 通道，业务日志统一通过 `stderr` 输出。
 
 ### 关于传输协议
 
-- **`stdio`**（生产环境推荐）：由 MCP 客户端作为子进程拉起，通过 stdin/stdout 通信，隔离性最好。
+- **`stdio`**（生产/平台推荐）：由 MCP 客户端作为子进程拉起，通过 stdin/stdout 通信，ModelScope 平台使用此协议验证和部署。
 - **`http`**（开发调试推荐）：以 Streamable-HTTP 方式对外暴露服务，端点 `/mcp`，便于跨客户端共享。
-- **`sse`**：基于 Server-Sent Events 的传统推送模式，适用于特定场景。
+- **`sse`**：基于 Server-Sent Events 的传统推送模式。
 
 ## ⚠️ 免责声明
 

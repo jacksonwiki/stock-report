@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-stock-mcp = "app.mcpserver.cli:main"
+mcp-server = "mcp_server:main"
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]

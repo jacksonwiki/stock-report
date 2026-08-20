@@ -1,11 +1,20 @@
-"""MCP 实例创建与注册工具"""
+"""MCP 实例创建、日志配置与工具注册"""
 import json
+import logging
+import sys
 
 import akshare as ak
 from fastmcp import FastMCP
 
 from .config import settings
-from .logging_setup import logger
+
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    stream=sys.stderr,
+)
+logger = logging.getLogger("stock-mcp")
+logger.propagate = False
 
 mcp = FastMCP(settings.server_name)
 

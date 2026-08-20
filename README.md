@@ -40,6 +40,8 @@ pip install akshare fastmcp python-dotenv
 pip install -e .
 ```
 
+发布到 PyPI 后，客户端可通过 `uvx` 直接运行（无需手动安装），详见下方客户端配置。
+
 ### 启动 MCP Server
 
 ```bash
@@ -61,12 +63,14 @@ python mcp_server.py --transport sse --port 8000
 {
   "mcpServers": {
     "stock-report": {
-      "command": "python",
-      "args": ["mcp_server.py"]
+      "command": "uvx",
+      "args": ["-y", "stock-report-mcp@latest"]
     }
   }
 }
 ```
+
+> 本地开发调试时，也可将配置改为 `command: "python", args: ["mcp_server.py"]`。
 
 #### HTTP 模式
 

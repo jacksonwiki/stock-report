@@ -1,5 +1,5 @@
 {
-  "name": "stock-report",
+  "name": "stock-report-mcp",
   "description": "A股研报MCP Server - 基于FastMCP与AkShare的股票研报MCP服务",
   "version": "0.1.0",
   "entry": "python mcp_server.py",

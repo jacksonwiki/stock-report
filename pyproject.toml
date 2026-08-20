@@ -1,7 +1,8 @@
 [project]
-name = "stock-report"
+name = "stock-report-mcp"
 version = "0.1.0"
 description = "A股研报MCP Server - 基于FastMCP与AkShare的股票研报MCP服务"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "akshare>=1.18.92",
@@ -10,7 +11,10 @@ dependencies = [
 ]
 
 [project.scripts]
-mcp-server = "mcp_server:main"
+stock-report-mcp = "mcp_server:main"
+
+[tool.setuptools]
+py-modules = ["mcp_server"]
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
